@@ -1,32 +1,30 @@
 # directmind
 
-**Retrieve → Synthesize → Verify → Respond**
+**Retrieve → Synthesize → Verify → Respond → Evolve**
 
-A unified brain query skill for [Hermes Agent](https://github.com/NousResearch/hermes-agent) that hits all memory systems in parallel, synthesizes results into a coherent answer with citations, enumerates what the brain doesn't know (gap analysis), and verifies live system state before acting on any claim.
+A unified brain query skill for [Hermes Agent](https://github.com/NousResearch/hermes-agent) with a **self-evolving architecture** — learns from feedback, reviews itself periodically, detects knowledge gaps, and auto-updates its own skill files.
 
-Inspired by GBrain's `think` command — built as a skill, not a separate tool.
+## 4-Layer Self-Evolving Architecture
 
-## What This Does
+| Layer | Name | Type | Description |
+|-------|------|------|-------------|
+| **1** | **Feedback Loop** | 🔄 Realtime | When user says "betul"/"oke" → `fact_feedback(helpful)` boosts trust; "salah" → asks for correction |
+| **2** | **Cron Self-Review** | 📅 Weekly (Mon 09:00) | Brain health check: trust distribution, contradictions, stale facts |
+| **3** | **Gap Learner** | 📅 Weekly (Mon 09:00) | Scans recent sessions for entities user asked about but missing from brain |
+| **4** | **Skill Patcher** | 📅 Weekly (Mon 09:00) | Detects drift between active skill and git repo, can auto-sync |
 
-Most AI memory tools give you back a list of raw results. `directmind` gives you **the answer**.
+Each layer feeds into the next — feedback trains trust, review finds gaps, gaps trigger learning, learning updates the skill itself.
 
-| Feature | Raw Tools | directmind |
-|---------|-----------|------------|
-| Retrieval | ✅ One source at a time | ✅ All sources in parallel |
-| Synthesis | ❌ Dump raw results | ✅ Composed answer with citations |
-| Gap Analysis | ❌ Silent about missing data | ✅ Explicit "what I don't know" |
-| Verification | ❌ Trust stale memory | ✅ Verify live state before acting |
-| Contradiction Detection | ❌ Ignore conflicts | ✅ Flag when sources disagree |
+## Four Modes
 
-## Three Modes
-
-| Mode | Trigger | What Happens |
+| Mode | Command | What Happens |
 |------|---------|-------------|
-| **think** | "directmind X", "think about X" | Full pipeline: retrieve → synthesize → verify → respond |
-| **search** | "search brain for X" | Raw retrieval only (fast, no LLM cost) |
-| **probe** | "what do we know about [entity]" | Entity-focused deep dive with graph traversal |
+| **think** | `directmind X` / `think about X` | Full pipeline: retrieve → synthesize → verify → respond + feedback loop |
+| **search** | `search brain for X` | Raw retrieval only (fast, no LLM cost) |
+| **probe** | `what do we know about [entity]` | Entity-focused deep dive with graph traversal |
+| **brain** | `directmind brain` | Inventory all stored facts + recent sessions |
 
-## The Pipeline
+## The Pipeline (Layer 1 — Think Mode)
 
 ```
 User asks a question
@@ -44,121 +42,149 @@ User asks a question
           │
           ▼
    ┌──────────────┐
-   │ 3. Verify    │  Check live state: files, crons, configs,
-   │              │  processes, training metrics, Notion pages
+   │ 3. Verify    │  Check live state: files, crons, configs, processes
+   │              │  If value changed → auto-correct answer
    └──────┬──────┘
           │
           ▼
    ┌──────────────┐
-   │ 4. Respond   │  Corrected answer + gaps table + verification table
+   │ 4. Respond   │  Answer + gaps table + verification table
+   │  + Feedback  │  Detect "betul"/"salah" → fact_feedback / koreksi
    └──────────────┘
+          │
+          ▼
+   ╔══════════════════════╗
+   ║  5. Auto-Learn       ║  If response had no brain data on topic
+   ║  (Gap Closed)        ║  → offer to save new knowledge to fact_store
+   ╚══════════════════════╝
 ```
 
-## Install
+## Weekly Brain Health (Layers 2–4 — Cron)
 
-### Via Hermes Skills CLI (recommended)
+Every Monday at 09:00, the `directmind-weekly-brain-health` cron job runs three checks:
+
+### Layer 2: Self-Review
+```
+📊 Mental Health Report
+   Total facts | avg trust | low-trust | contradictions | stale facts | health score
+   💡 Recommendations: which facts need attention
+```
+
+### Layer 3: Gap Learner
+```
+🔍 Gap Analysis
+   Sessions scanned | entities extracted | brain entities | knowledge gaps
+   🔴 Top gaps: entities user asked about but brain doesn't know
+   👻 Orphan facts: stored facts with no entity link
+```
+
+### Layer 4: Skill Patcher
+```
+🛠️  Skill Health
+   Version check (local vs GitHub) | drift detection | backup availability
+   💡 Run --apply to sync if drifted
+```
+
+All three are `no_agent=True` scripts — zero LLM cost, run in <1 second.
+
+## Install
 
 ```bash
 hermes skills install https://raw.githubusercontent.com/PatrickNoFilter/directmind/main/SKILL.md
 ```
 
-### Manual
-
+Or clone and copy manually:
 ```bash
 git clone https://github.com/PatrickNoFilter/directmind.git
-cp directmind/SKILL.md ~/.hermes/skills/directmind/
-cp -r directmind/scripts ~/.hermes/skills/directmind/
+hermes skills install directmind/SKILL.md
 ```
 
 ## Usage
 
 Just talk to Hermes naturally:
 
-```
-# Full brain query with synthesis + verification
+```markdown
+# Full brain query with synthesis + feedback loop
 "directmind what's the status of our training project?"
+  → Answer + gaps + verification + feedback prompt
 
 # Entity-focused probe
 "what do we know about the GGUF pipeline?"
+  → Deep dive: all facts about that entity + related entities
 
 # Quick raw search (no synthesis)
 "search brain for Modal deploy"
+  → Raw fact matches with trust scores
+
+# Brain inventory
+"directmind brain"
+  → All facts + recent sessions
+
+# Feedback (automatic — just respond)
+"betul"  → trust score boosted for cited facts
+"salah"  → agent asks: "what's the right answer?"
 ```
 
-## How It Works
+## Scripts Reference
 
-### Retrieval Layer
-Hits all Hermes memory systems in parallel:
-- **fact_store** — keyword search + entity probe + graph traversal + contradiction check
-- **session_search** — FTS5 full-text search across all conversation history
-- **memory** — persistent cross-session user/environment facts
+```
+scripts/
+├── directmind.py       # Layer 1: think/probe/search/brain modes
+├── self_review.py      # Layer 2: brain health + trust analysis
+├── gap_learner.py      # Layer 3: cross-session gap detection
+└── skill_patcher.py    # Layer 4: version check + auto-sync
+```
 
-Results are merged and deduplicated by content similarity.
+### Manual script runs
 
-### Synthesis Layer
-The LLM reads all merged results and composes a prose answer where:
-- Every claim cites its source: `[fact:#3]`, `[session:abc123]`, `[memory]`
-- Related information is grouped thematically, not by source
-- Contradictions are presented side-by-side, not silently resolved
-- Inferred claims are marked `[inferred]`
+```bash
+# Self-Review
+python3 scripts/self_review.py
 
-### Gap Analysis
-Every answer includes an explicit gaps table:
+# Gap Learner
+python3 scripts/gap_learner.py
+python3 scripts/gap_learner.py --days 30
+python3 scripts/gap_learner.py --verbose
 
-| Type | Detail |
-|------|--------|
-| 🕐 Staleness | Last data from June 22 (5 days ago) |
-| 📭 Missing sources | No data from: email, Slack DMs |
-| ⚡ Contradictions | Memory says loss=0.21, session says loss=0.18 |
-| 🔍 Unverified | Inferred training still active (no cron check) |
-| ❓ Unknown | No data on code fluency evaluation results |
+# Skill Patcher (dry-run)
+python3 scripts/skill_patcher.py
 
-### Verification Layer
-Before presenting the answer, `directmind` checks live system state:
+# Apply update from local git repo
+python3 scripts/skill_patcher.py --apply
 
-| Claim | Check | Result |
-|-------|-------|--------|
-| Training cron active | `cronjob list` | ✅ Still running (last: 2min ago) |
-| GGUF at /root/anggira-train/ | `stat` | ✅ Exists (modified: June 22) |
-| Loss was 0.2165 | read checkpoint | ❌ NOW 0.1843 (improved!) |
-| Notion log updated | MCP last_edited | ⚠️ Cannot verify (MCP not connected) |
+# Force update from GitHub raw
+python3 scripts/skill_patcher.py --apply --force-from-github
+```
 
-If verification shows a different value than memory, the answer is **corrected automatically**.
+### Cron job
+
+```bash
+# Weekly health check (Mon 09:00)
+cronjob(action="run", job_id="26102aaf089b")
+```
+
+## Key Design Decisions
+
+- **No containers needed** — runs directly in Hermes on Android PRoot, Linux, macOS
+- **WAL mode SQLite** — unlimited concurrent readers, cron never blocks Hermes
+- **Read-only scripts** — Layer 2/3/4 scripts never write outside backup dir
+- **No LLM cost for cron** — `no_agent=True` scripts produce output directly
+- **Backups before update** — skill_patcher creates `.backup/` timestamps before overwriting
+- **Overlap-safe** — mutual exclusion via SQLite WAL mode + read-only connections
 
 ## Architecture
 
 ```
 directmind/
-├── SKILL.md                      # Main skill doc (Hermes reads this)
-├── README.md                     # This file
-├── LICENSE                       # MIT
+├── SKILL.md                       # Main skill doc
+├── README.md                      # This file
+├── LICENSE                        # MIT
 └── scripts/
-    ├── directmind.py             # Orchestrator (retrieval plan, verify plan, formatting)
-    └── synthesis_prompt.md       # Gap analysis + verify prompt template
+    ├── directmind.py              # Layer 1: think/probe/search/brain + feedback
+    ├── self_review.py             # Layer 2: brain health (trust/distribution)
+    ├── gap_learner.py             # Layer 3: knowledge gap detection
+    └── skill_patcher.py           # Layer 4: version/drift + auto-sync
 ```
-
-## Memory Systems Used
-
-| System | Tool | What It Stores |
-|--------|------|---------------|
-| Fact Store | `fact_store` | Structured facts with entities, trust scores, graph edges |
-| Session Search | `session_search` | Full conversation history (SQLite + FTS5) |
-| Persistent Memory | `memory` | User profile + environment notes (~2200 chars) |
-| Holographic Memory | `fact_store` (probe/related) | Entity resolution, trust scoring, graph traversal |
-
-## FAQ
-
-**Q: Does this need GBrain?**
-No. GBrain is a separate tool with its own database. `directmind` uses Hermes' built-in memory systems and adds the synthesis + gap analysis pattern on top.
-
-**Q: Does it work with any model?**
-Yes. The retrieval uses Hermes tools (model-agnostic). The synthesis step is just a prompt — any capable model can do it.
-
-**Q: Does verification make changes to my system?**
-No. Verification only READS state (stat, ps, git log, curl health). It never writes or changes anything.
-
-**Q: What if the brain has nothing about my query?**
-You'll get: "Nothing found in brain about X" plus a gap entry: `❓ Unknown: zero data on this topic`. No hallucinated answers.
 
 ## License
 
