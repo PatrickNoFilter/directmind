@@ -87,10 +87,17 @@ Every Monday at 09:00, the `directmind-weekly-brain-health` cron job runs three 
 
 All three are `no_agent=True` scripts — zero LLM cost, run in <1 second.
 
-### Via Hermes Skills CLI (recommended)
+### One-Stop Install (recommended)
 
 ```bash
-hermes skills install https://raw.githubusercontent.com/PatrickNoFilter/directmind/main/SKILL.md
+curl -sL https://raw.githubusercontent.com/PatrickNoFilter/directmind/main/scripts/install.py | python3
+```
+
+This checks all dependencies, installs holographic if missing, copies the skill, syncs scripts, creates the cron wrapper, and runs post-install verification.
+
+```bash
+# Install only directmind (skip holographic setup)
+curl -sL https://raw.githubusercontent.com/PatrickNoFilter/directmind/main/scripts/install.py | python3 - --skill-only
 ```
 
 ### Prerequisites
