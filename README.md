@@ -194,5 +194,6 @@ MIT — do whatever you want with it.
 ## Credits
 
 - Gap analysis pattern inspired by [GBrain](https://github.com/garrytan/gbrain) by Garry Tan
+- **Holographic Memory / fact_store** — built on Hermes Agent's [memory infrastructure](https://hermes-agent.nousresearch.com/docs) with entity resolution, trust scoring, and graph traversal
 - Built for [Hermes Agent](https://github.com/NousResearch/hermes-agent) by Nous Research
 - Created by [PatrickNoFilter](https://github.com/PatrickNoFilter)
