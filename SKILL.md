@@ -1,7 +1,7 @@
 ---
 name: directmind
 description: "Direct brain queries for Hermes — unified retrieval across all memory systems (fact_store, session_search, memory, skills, todos), synthesis with gap analysis, live verification, and brain learning via fact feedback."
-version: 2.1.0
+version: 2.2.0
 author: PatrickNoFilter
 license: MIT
 platforms: [linux, macos, windows]
@@ -220,7 +220,7 @@ fact_store(action="add", content=<new_fact>, category=<appropriate>, tags=<relev
 
 A weekly cron job that automatically reviews brain health by reading the fact_store database directly.
 
-**Schedule:** Setiap Senin 09:00 via `directmind-weekly-review` cron job.
+**Schedule:** Setiap Senin 09:00 via `directmind-weekly-brain-health` cron job.
 
 **What it checks:**
 | Metric | What it means |
@@ -274,6 +274,41 @@ python3 ~/.hermes/skills/hermes/directmind/scripts/gap_learner.py
 python3 ~/.hermes/skills/hermes/directmind/scripts/gap_learner.py --days 30
 python3 ~/.hermes/skills/hermes/directmind/scripts/gap_learner.py --verbose
 ```
+
+### Layer 4 — Skill Patcher (meta-learning)
+
+A weekly check that detects when the directmind skill itself is outdated and reports drift between the active skill and the git repo.
+
+**How it works:**
+| Step | What it does |
+|------|-------------|
+| 1 | Fetches latest version tag from GitHub (raw SKILL.md) |
+| 2 | Compares version with local active skill |
+| 3 | Checks SHA256 drift between git repo (`/root/directmind/`) and skill dir |
+| 4 | Reports outdated files with hash diffs |
+| 5 | Can auto-apply updates with `--apply` flag |
+
+**Cron job:** Runs every Monday 09:00 as part of `directmind-weekly-brain-health` (dry-run mode).
+
+**Manual update:**
+```
+# Dry-run preview
+python3 ~/.hermes/skills/hermes/directmind/scripts/skill_patcher.py
+
+# Apply update (copies from git repo to skill dir with backup)
+python3 ~/.hermes/skills/hermes/directmind/scripts/skill_patcher.py --apply
+
+# Force fetch from GitHub instead of local repo
+python3 ~/.hermes/skills/hermes/directmind/scripts/skill_patcher.py --apply --force-from-github
+```
+
+### Future: Layer 5+ (speculative)
+
+| Layer | Vision |
+|-------|--------|
+| 5 | Auto-fill gaps: when `gap_learner` finds missing entities, auto-search web + store facts |
+| 6 | Cross-session pattern mining: detect recurring user tasks and auto-create skills |
+| 7 | Autonomous cron tuning: adjust schedule based on user activity patterns (avoid overlap) |
 
 ### Step 5: Respond
 
