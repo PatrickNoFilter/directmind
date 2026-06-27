@@ -236,7 +236,7 @@ def format_think_output(plan: dict[str, Any]) -> str:
 
 ## Step 3: Verify
 
-{build_verify_guide()}
+{build_verify_guide(plan)}
 
 ---
 
