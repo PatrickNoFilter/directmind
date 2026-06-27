@@ -87,13 +87,38 @@ Every Monday at 09:00, the `directmind-weekly-brain-health` cron job runs three 
 
 All three are `no_agent=True` scripts — zero LLM cost, run in <1 second.
 
-## Install
+### Via Hermes Skills CLI (recommended)
 
 ```bash
 hermes skills install https://raw.githubusercontent.com/PatrickNoFilter/directmind/main/SKILL.md
 ```
 
-Or clone and copy manually:
+### Prerequisites
+
+Directmind relies on Hermes' **Holographic Memory Provider** which provides the `fact_store` tool. Verify it's active:
+
+```bash
+hermes memory status
+# Should show: Provider: holographic, Status: available ✓
+```
+
+If holographic is not set up:
+
+```bash
+hermes memory setup holographic
+# Then restart Hermes session (/reset in TUI)
+```
+
+All other dependencies are built-in (SQLite, Python 3).
+
+### Dependency Auto-Check
+
+```bash
+python3 scripts/check_deps.py
+# → Holographic: ✅ | fact_store: ✅ | Python: ✅ | SQLite: ✅
+```
+
+### Manual Install
 ```bash
 git clone https://github.com/PatrickNoFilter/directmind.git
 hermes skills install directmind/SKILL.md
