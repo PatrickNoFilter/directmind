@@ -1,7 +1,7 @@
 ---
 name: directmind
 description: "Direct brain queries for Hermes — unified retrieval across all memory systems (fact_store, session_search, memory, skills, todos), synthesis with gap analysis, live verification, and brain learning via fact feedback."
-version: 2.0.0
+version: 2.1.0
 author: PatrickNoFilter
 license: MIT
 platforms: [linux, macos, windows]
@@ -247,6 +247,34 @@ Or run standalone:
 python3 ~/.hermes/skills/hermes/directmind/scripts/self_review.py
 ```
 
+### Layer 3 — Gap Learner (proaktif)
+
+A weekly cron job that scans recent conversations for entities the user asked about but that have NO corresponding facts in the brain.
+
+**How it works:**
+| Step | What it does |
+|------|-------------|
+| 1 | Reads last 7 days of session history from `state.db` |
+| 2 | Extracts capitalized entities (phrases, acronyms, quoted terms) |
+| 3 | Cross-references against all entities registered in `fact_store` |
+| 4 | Reports entities mentioned 2+ times but missing from brain |
+| 5 | Flags orphan facts (facts with no entity link) |
+
+**Cron job:** Runs every Monday 09:00 as part of `directmind-weekly-brain-health`.
+
+**Also flags orphan facts** — facts stored in brain but with NO entity link, making them invisible to `probe`/`reason`.
+
+**Manual run:**
+```
+cronjob(action="run", job_id="26102aaf089b")
+```
+or
+```
+python3 ~/.hermes/skills/hermes/directmind/scripts/gap_learner.py
+python3 ~/.hermes/skills/hermes/directmind/scripts/gap_learner.py --days 30
+python3 ~/.hermes/skills/hermes/directmind/scripts/gap_learner.py --verbose
+```
+
 ### Step 5: Respond
 
 ```markdown
@@ -318,11 +346,25 @@ After sending, PAUSE and watch:
 
 11. **Large gap tables are noise.** Max 3-5 gap rows, prioritize by impact.
 
+12. **`skill_manage patch` hanya update skill dir, bukan git repo.** Kalau skill juga di-track di repo GitHub, copy manual:
+    ```
+    cp ~/.hermes/skills/hermes/<skill>/scripts/<file> /repo/path/scripts/<file>
+    ```
+    Lupa sync → repo punya kode lama.
+
+13. **`cronjob(script=)` tidak menerima absolute path.** Taruh wrapper di `~/.hermes/scripts/`:
+    ```
+    # ~/.hermes/scripts/directmind-review.sh
+    #!/bin/sh
+    python3 ~/.hermes/skills/hermes/directmind/scripts/self_review.py
+    ```
+    Detail skema DB ada di `references/fact_store_schema.md`.
+
 ## Pitfalls (continued)
 
-12. **Memory overlap wastes capacity and causes staleness.** MEMORY.md (2,200 chars) and USER.md (1,375 chars) are limited. Never store facts there that already exist in fact_store — the fact_store copy is canonical and trust-tracked. Run a memory hygiene scan periodically: cross-reference every MEMORY/USER entry against fact_store, remove duplicates from the limited stores. See `references/memory-hygiene.md` for the full methodology.
+14. **Memory overlap wastes capacity and causes staleness.** MEMORY.md (2,200 chars) and USER.md (1,375 chars) are limited. Never store facts there that already exist in fact_store — the fact_store copy is canonical and trust-tracked. Run a memory hygiene scan periodically: cross-reference every MEMORY/USER entry against fact_store, remove duplicates from the limited stores. See `references/memory-hygiene.md` for the full methodology.
 
-13. **One fact, one place — always.** Before adding to MEMORY.md, check fact_store first. Before adding to fact_store, ask: "is this a tool/environment quirk?" — those belong in MEMORY.md. State facts → fact_store. Procedure facts → MEMORY.md or skills.
+15. **One fact, one place — always.** Before adding to MEMORY.md, check fact_store first. Before adding to fact_store, ask: "is this a tool/environment quirk?" — those belong in MEMORY.md. State facts → fact_store. Procedure facts → MEMORY.md or skills.
 
 ## References
 
