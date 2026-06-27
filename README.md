@@ -171,6 +171,7 @@ cronjob(action="run", job_id="26102aaf089b")
 - **No LLM cost for cron** — `no_agent=True` scripts produce output directly
 - **Backups before update** — skill_patcher creates `.backup/` timestamps before overwriting
 - **Overlap-safe** — mutual exclusion via SQLite WAL mode + read-only connections
+- **Self-verifying** — after every conclusion, directmind runs verification against its own claims, checks live system state, and auto-corrects any discrepancy before finalizing the answer
 
 ## Architecture
 
