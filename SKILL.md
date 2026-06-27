@@ -181,19 +181,70 @@ After synthesis, verify every claim about **live system state**:
 
 ### Step 4: Learn (Brain Feedback Loop)
 
-**4a. Fact Feedback** — for every fact cited in the answer:
+**4a. AUTO-FEEDBACK — Monitor User Reaction** (added Layer 1)
+
+After delivering the answer, PAUSE and watch for these user signals:
+
+| User says | Action |
+|-----------|--------|
+| "betul", "oke", "benar", "mantap", "👍", "terima kasih", "thanks" | `fact_feedback(action="helpful", fact_id=<ID>)` for each fact used — boosts trust_score +0.05 |
+| "salah", "bukan", "sebenarnya", "tidak", "kurang tepat", "❌" | Identify the wrong fact → `fact_feedback(action="unhelpful", fact_id=<ID>)` → ask "Koreksi yang benar apa?" → `fact_store(action="add", content=<corrected>)` |
+| Explicit ✅ | Helpful |
+| Explicit ❌ | Ask what's wrong, then fix |
+| Anything else | Ask: "Apakah jawaban ini membantu? ✅/❌" |
+
+Without feedback, trust scores stay at 0.5 forever.
+
+**4b. Gap Closed Detection** — if this query answered something the brain had NO knowledge about:
+```
+# After user confirms answer was correct:
+fact_store(action="add", content="<new durable knowledge>", category="general", tags=["auto-gap-closed"])
+```
+
+**4c. Fact Feedback** — for every fact cited in the answer:
 ```
 fact_feedback(action="helpful", fact_id=<ID>)
 ```
 
-**4b. Correct Stale Facts** — if verify found outdated data:
+**4d. Correct Stale Facts** — if verify found outdated data:
 ```
 fact_store(action="update", fact_id=<ID>, content=<corrected>)
 ```
 
-**4c. Auto-Store** — if synthesis found new knowledge, OFFER to store:
+**4e. Auto-Store** — if synthesis found new knowledge, OFFER to store:
 ```
 fact_store(action="add", content=<new_fact>, category=<appropriate>, tags=<relevant>)
+```
+
+### Layer 2 — Cron Self-Review (terjadwal)
+
+A weekly cron job that automatically reviews brain health by reading the fact_store database directly.
+
+**Schedule:** Setiap Senin 09:00 via `directmind-weekly-review` cron job.
+
+**What it checks:**
+| Metric | What it means |
+|--------|-------------|
+| 📊 Trust distribution | How many facts are high/medium/low trust |
+| ⚠️ Low-trust facts | Facts with trust < 0.3 — need attention |
+| ⚡ Contradictions | Same entity with conflicting trust or duplicate content |
+| ⏳ Stale facts | Facts not touched in >60 days |
+| 🏥 Health score | 0–100 overall brain health index |
+| 💡 Recommendations | Action items to improve brain quality |
+
+**Cron job info:**
+- `no_agent=True` — runs script directly, no LLM cost
+- Output delivered to origin chat
+- Script: `scripts/self_review.py` (reads `~/.hermes/memory_store.db` read-only)
+
+**Manual trigger:**
+```
+cronjob(action="run", job_id="26102aaf089b")
+```
+
+Or run standalone:
+```
+python3 ~/.hermes/skills/hermes/directmind/scripts/self_review.py
 ```
 
 ### Step 5: Respond
@@ -218,6 +269,15 @@ fact_store(action="add", content=<new_fact>, category=<appropriate>, tags=<relev
 
 ## 🧠 Brain Learning
 [N facts feedback] [N stale corrected] [N new suggested]
+
+## 💬 Feedback (WAIT for user reaction)
+After sending, PAUSE and watch:
+
+| User says | Action |
+|-----------|--------|
+| "betul", "oke", "mantap", "👍" | `fact_feedback(helpful)` for each fact used |
+| "salah", "bukan", "❌" | `fact_feedback(unhelpful)` → ask koreksi |
+| Anything else | "Apakah jawaban ini membantu? ✅/❌" |
 ```
 
 ---
