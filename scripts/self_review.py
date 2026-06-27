@@ -43,7 +43,7 @@ def analyze_trust_distribution(facts):
     """Analyze trust score distribution."""
     total = len(facts)
     if total == 0:
-        return {"total": 0}
+        return {"total": 0, "high": 0, "medium": 0, "low": 0, "default_stuck": 0, "avg": 0.0}
 
     high = sum(1 for f in facts if f["trust_score"] >= 0.7)
     medium = sum(1 for f in facts if 0.3 <= f["trust_score"] < 0.7)
