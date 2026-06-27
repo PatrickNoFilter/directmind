@@ -13,7 +13,7 @@ What it does:
   3. Installs the directmind skill
   4. Verifies everything works end-to-end
 """
-import os, sys, subprocess, sqlite3, tempfile, shutil
+import os, sys, subprocess, sqlite3, tempfile, shutil, urllib.request, json
 
 SELF_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -109,7 +109,14 @@ os.makedirs(skill_dest, exist_ok=True)
 src_skill = os.path.join(SELF_DIR, "..", "SKILL.md")
 if os.path.exists(src_skill):
     shutil.copy2(src_skill, os.path.join(skill_dest, "SKILL.md"))
-check("SKILL.md installed", True, f"({skill_dest})")
+    check("SKILL.md installed", True, f"({skill_dest})")
+else:
+    # GitHub fallback: download SKILL.md directly
+    try:
+        urllib.request.urlretrieve(f"{GITHUB_URL}/SKILL.md", os.path.join(skill_dest, "SKILL.md"))
+        check("SKILL.md installed", True, f"({skill_dest}) [from GitHub]")
+    except Exception as e:
+        check("SKILL.md install failed", False, str(e)[:80])
 
 # ---------------------------------------------------------------------------
 step("4. Copying scripts to skill directory")
@@ -123,15 +130,29 @@ for root, dirs, files in os.walk(skills_base):
         break
 
 if directmind_scripts:
+    # Try local repo first, then GitHub API fallback
     repo_scripts = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
     if os.path.exists(repo_scripts):
         for f in os.listdir(repo_scripts):
             if f.endswith(".py"):
                 shutil.copy2(os.path.join(repo_scripts, f), os.path.join(directmind_scripts, f))
-        check("Scripts synced", True, f"({directmind_scripts})")
+        check("Scripts synced", True, f"({directmind_scripts}) [local]")
     else:
-        check("Repo scripts found", False, f"(not at {repo_scripts})")
-        fails += 1
+        # GitHub fallback: download scripts via API
+        print("  Local repo not found, downloading from GitHub...")
+        try:
+            api_url = "https://api.github.com/repos/PatrickNoFilter/directmind/contents/scripts"
+            with urllib.request.urlopen(api_url) as r:
+                items = json.loads(r.read())
+            downloaded = 0
+            for item in items:
+                if item["name"].endswith(".py") and item.get("download_url"):
+                    urllib.request.urlretrieve(item["download_url"],
+                                              os.path.join(directmind_scripts, item["name"]))
+                    downloaded += 1
+            check("Scripts synced", True, f"({downloaded} files from GitHub → {directmind_scripts})")
+        except Exception as e:
+            check("Scripts download failed", False, str(e)[:80])
 else:
     check("Skill dir found", False)
     fails += 1
